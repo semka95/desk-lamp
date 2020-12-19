@@ -1,4 +1,3 @@
-#include <ArduinoOTA.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
 
@@ -7,28 +6,35 @@
 #include <SPIFFSEditor.h>
 
 #include <secrets.h>
+#include <led.h>
+#include <fastled.h>
 
 AsyncWebServer server(80);
 
 const char *hostName = "lamp";
+const String contentType = "text/html; charset=UTF-8";
 
 void startMDNS();
 void setupWiFi();
-void setupOTA();
 void setupServer();
 
 void requestBodyHandler(AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total);
 void fileUploadHandler(AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final);
 void heapHandler(AsyncWebServerRequest *request);
 void nfHandler(AsyncWebServerRequest *request);
+void handleTest(AsyncWebServerRequest *request);
+void handleBrUp(AsyncWebServerRequest *request);
+void handleBrDown(AsyncWebServerRequest *request);
 
 void setup()
 {
   Serial.begin(115200);
   Serial.setDebugOutput(true);
 
+  // setupLED();
+  setupFastLED();
+
   setupWiFi();
-  setupOTA();
 
   SPIFFS.begin();
 
@@ -38,7 +44,7 @@ void setup()
 void loop()
 {
   MDNS.update();
-  ArduinoOTA.handle();
+  loopFastLED(Serial);
 }
 
 void setupWiFi()
@@ -58,54 +64,6 @@ void setupWiFi()
   MDNS.addService("http", "tcp", 80);
 }
 
-void setupOTA()
-{
-  ArduinoOTA.onStart([]() {
-    String type;
-    if (ArduinoOTA.getCommand() == U_FLASH)
-    {
-      type = "sketch";
-    }
-    else
-    { // U_FS
-      type = "filesystem";
-    }
-
-    // NOTE: if updating FS this would be the place to unmount FS using FS.end()
-    Serial.println("Start updating " + type);
-  });
-  ArduinoOTA.onEnd([]() {
-    Serial.println("\nEnd");
-  });
-  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
-  });
-  ArduinoOTA.onError([](ota_error_t error) {
-    Serial.printf("Error[%u]: ", error);
-    if (error == OTA_AUTH_ERROR)
-    {
-      Serial.println("Auth Failed");
-    }
-    else if (error == OTA_BEGIN_ERROR)
-    {
-      Serial.println("Begin Failed");
-    }
-    else if (error == OTA_CONNECT_ERROR)
-    {
-      Serial.println("Connect Failed");
-    }
-    else if (error == OTA_RECEIVE_ERROR)
-    {
-      Serial.println("Receive Failed");
-    }
-    else if (error == OTA_END_ERROR)
-    {
-      Serial.println("End Failed");
-    }
-  });
-  ArduinoOTA.begin();
-}
-
 void startMDNS()
 {
   if (!MDNS.begin(hostName))
@@ -122,10 +80,66 @@ void startMDNS()
   }
 }
 
+void handleStaticRGB(AsyncWebServerRequest *request)
+{
+  if (!request->hasParam("r") || !request->hasParam("g") || !request->hasParam("b"))
+  {
+    request->send(400, contentType);
+    return;
+  }
+
+  uint8_t r = request->getParam("r")->value().toInt();
+  uint8_t g = request->getParam("g")->value().toInt();
+  uint8_t b = request->getParam("b")->value().toInt();
+
+  colorsRoutine(r, g, b);
+
+  request->send(200, contentType);
+  return;
+}
+
+void handleBrightness(AsyncWebServerRequest *request)
+{
+  if (!request->hasParam("value"))
+  {
+    request->send(400, contentType);
+    return;
+  }
+
+  uint8_t bn = request->getParam("value")->value().toInt();
+
+  setBrightness(bn);
+
+  request->send(200, contentType);
+  return;
+}
+
+void handleColorTemp(AsyncWebServerRequest *request)
+{
+  if (!request->hasParam("value"))
+  {
+    request->send(400, contentType);
+    return;
+  }
+
+  int kelvin = request->getParam("value")->value().toInt();
+
+  setColorTemperature(kelvin);
+
+  request->send(200, contentType);
+  return;
+}
+
 void setupServer()
 {
   server.addHandler(new SPIFFSEditor(HTTP_USERNAME, HTTP_PASSWORD));
   server.on("/heap", HTTP_GET, heapHandler);
+  server.on("/api/brightness/set", HTTP_GET, handleBrightness);
+  server.on("/api/brightness/up", HTTP_GET, handleBrUp);
+  server.on("/api/brightness/down", HTTP_GET, handleBrDown);
+  server.on("/api/rgb", HTTP_GET, handleStaticRGB);
+  server.on("/api/color_temp", HTTP_GET, handleColorTemp);
+
   server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.htm");
 
   server.onNotFound(nfHandler);
@@ -133,6 +147,30 @@ void setupServer()
   server.onRequestBody(requestBodyHandler);
 
   server.begin();
+}
+
+void handleBrUp(AsyncWebServerRequest *request)
+{
+  uint8_t bn = 15;
+  if (request->hasParam("value"))
+  {
+    bn = request->getParam("value")->value().toInt();
+  }
+
+  changeBrightness(bn);
+  request->send(200, contentType);
+}
+
+void handleBrDown(AsyncWebServerRequest *request)
+{
+  int8_t bn = 15;
+  if (request->hasParam("value"))
+  {
+    bn = request->getParam("value")->value().toInt();
+  }
+
+  changeBrightness(-bn);
+  request->send(200, contentType);
 }
 
 void requestBodyHandler(AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total)
@@ -155,7 +193,7 @@ void fileUploadHandler(AsyncWebServerRequest *request, const String &filename, s
 
 void heapHandler(AsyncWebServerRequest *request)
 {
-  request->send(200, "text/plain", String(ESP.getFreeHeap()));
+  request->send(200, contentType, String(ESP.getFreeHeap()));
 }
 
 void nfHandler(AsyncWebServerRequest *request)
@@ -211,5 +249,5 @@ void nfHandler(AsyncWebServerRequest *request)
     }
   }
 
-  request->send(404);
+  request->send(404, contentType);
 }
