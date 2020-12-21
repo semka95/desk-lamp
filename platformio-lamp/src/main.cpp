@@ -7,7 +7,6 @@
 
 #include <secrets.h>
 #include <led.h>
-#include <fastled.h>
 
 AsyncWebServer server(80);
 
@@ -22,17 +21,16 @@ void requestBodyHandler(AsyncWebServerRequest *request, uint8_t *data, size_t le
 void fileUploadHandler(AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final);
 void heapHandler(AsyncWebServerRequest *request);
 void nfHandler(AsyncWebServerRequest *request);
-void handleTest(AsyncWebServerRequest *request);
-void handleBrUp(AsyncWebServerRequest *request);
-void handleBrDown(AsyncWebServerRequest *request);
+// void handleTest(AsyncWebServerRequest *request);
+// void handleBrUp(AsyncWebServerRequest *request);
+// void handleBrDown(AsyncWebServerRequest *request);
 
 void setup()
 {
   Serial.begin(115200);
   Serial.setDebugOutput(true);
 
-  // setupLED();
-  setupFastLED();
+  setupLED();
 
   setupWiFi();
 
@@ -44,7 +42,6 @@ void setup()
 void loop()
 {
   MDNS.update();
-  loopFastLED(Serial);
 }
 
 void setupWiFi()
@@ -80,65 +77,65 @@ void startMDNS()
   }
 }
 
-void handleStaticRGB(AsyncWebServerRequest *request)
-{
-  if (!request->hasParam("r") || !request->hasParam("g") || !request->hasParam("b"))
-  {
-    request->send(400, contentType);
-    return;
-  }
+// void handleStaticRGB(AsyncWebServerRequest *request)
+// {
+//   if (!request->hasParam("r") || !request->hasParam("g") || !request->hasParam("b"))
+//   {
+//     request->send(400, contentType);
+//     return;
+//   }
 
-  uint8_t r = request->getParam("r")->value().toInt();
-  uint8_t g = request->getParam("g")->value().toInt();
-  uint8_t b = request->getParam("b")->value().toInt();
+//   uint8_t r = request->getParam("r")->value().toInt();
+//   uint8_t g = request->getParam("g")->value().toInt();
+//   uint8_t b = request->getParam("b")->value().toInt();
 
-  colorsRoutine(r, g, b);
+//   colorsRoutine(r, g, b);
 
-  request->send(200, contentType);
-  return;
-}
+//   request->send(200, contentType);
+//   return;
+// }
 
-void handleBrightness(AsyncWebServerRequest *request)
-{
-  if (!request->hasParam("value"))
-  {
-    request->send(400, contentType);
-    return;
-  }
+// void handleBrightness(AsyncWebServerRequest *request)
+// {
+//   if (!request->hasParam("value"))
+//   {
+//     request->send(400, contentType);
+//     return;
+//   }
 
-  uint8_t bn = request->getParam("value")->value().toInt();
+//   uint8_t bn = request->getParam("value")->value().toInt();
 
-  setBrightness(bn);
+//   setBrightness(bn);
 
-  request->send(200, contentType);
-  return;
-}
+//   request->send(200, contentType);
+//   return;
+// }
 
-void handleColorTemp(AsyncWebServerRequest *request)
-{
-  if (!request->hasParam("value"))
-  {
-    request->send(400, contentType);
-    return;
-  }
+// void handleColorTemp(AsyncWebServerRequest *request)
+// {
+//   if (!request->hasParam("value"))
+//   {
+//     request->send(400, contentType);
+//     return;
+//   }
 
-  int kelvin = request->getParam("value")->value().toInt();
+//   int kelvin = request->getParam("value")->value().toInt();
 
-  setColorTemperature(kelvin);
+//   setColorTemperature(kelvin);
 
-  request->send(200, contentType);
-  return;
-}
+//   request->send(200, contentType);
+//   return;
+// }
 
 void setupServer()
 {
   server.addHandler(new SPIFFSEditor(HTTP_USERNAME, HTTP_PASSWORD));
   server.on("/heap", HTTP_GET, heapHandler);
-  server.on("/api/brightness/set", HTTP_GET, handleBrightness);
-  server.on("/api/brightness/up", HTTP_GET, handleBrUp);
-  server.on("/api/brightness/down", HTTP_GET, handleBrDown);
-  server.on("/api/rgb", HTTP_GET, handleStaticRGB);
-  server.on("/api/color_temp", HTTP_GET, handleColorTemp);
+  // server.on("/api/brightness/set", HTTP_GET, handleBrightness);
+  // server.on("/api/brightness/up", HTTP_GET, handleBrUp);
+  // server.on("/api/brightness/down", HTTP_GET, handleBrDown);
+  // server.on("/api/rgb", HTTP_GET, handleStaticRGB);
+  // server.on("/api/color_temp", HTTP_GET, handleColorTemp);
 
   server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.htm");
 
@@ -149,29 +146,29 @@ void setupServer()
   server.begin();
 }
 
-void handleBrUp(AsyncWebServerRequest *request)
-{
-  uint8_t bn = 15;
-  if (request->hasParam("value"))
-  {
-    bn = request->getParam("value")->value().toInt();
-  }
+// void handleBrUp(AsyncWebServerRequest *request)
+// {
+//   uint8_t bn = 15;
+//   if (request->hasParam("value"))
+//   {
+//     bn = request->getParam("value")->value().toInt();
+//   }
 
-  changeBrightness(bn);
-  request->send(200, contentType);
-}
+//   changeBrightness(bn);
+//   request->send(200, contentType);
+// }
 
-void handleBrDown(AsyncWebServerRequest *request)
-{
-  int8_t bn = 15;
-  if (request->hasParam("value"))
-  {
-    bn = request->getParam("value")->value().toInt();
-  }
+// void handleBrDown(AsyncWebServerRequest *request)
+// {
+//   int8_t bn = 15;
+//   if (request->hasParam("value"))
+//   {
+//     bn = request->getParam("value")->value().toInt();
+//   }
 
-  changeBrightness(-bn);
-  request->send(200, contentType);
-}
+//   changeBrightness(-bn);
+//   request->send(200, contentType);
+// }
 
 void requestBodyHandler(AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total)
 {

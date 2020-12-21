@@ -69,15 +69,11 @@ public:
 		_dat_port = portOutputRegister(digitalPinToPort(pin));
 		_dat_ddr = portModeRegister(digitalPinToPort(pin));
 		*_dat_ddr |= _dat_mask;
-		switch (chip)
+		if (chip == LED_WS2812)
 		{
-		case LED_WS2812:
 			oneLedMax = 30;
 			oneLedIdle = 660;
-			break; // 28/240 для ECO, 32/700 матрица
 		}
-		// oneLedMax = (ток ленты с одним горящим) - (ток выключенной ленты)
-		// oneLedIdle = (ток выключенной ленты) / (количество ледов)
 	}
 
 	microLED()
@@ -300,7 +296,7 @@ public:
 			"MOVI.N %[CNT], 8        \n\t"		  // Загружаем в счетчик циклов 8
 			"l_start:       \n\t"				  // Начало основного цикла
 			"S32I %[SET_H], %[PORT], 0     \n\t"  // Устанавливаем на выходе HIGH
-			"BBSI %[DATA], 7, b_set    \n\t"	  // Если текущий бит установлен - пропуск след. инстр.
+			"BBSI.L %[DATA], 7, b_set    \n\t"	  // Если текущий бит установлен - пропуск след. инстр.
 			"S32I %[SET_L], %[PORT], 0     \n\t"  // Устанавливаем на выходе LOW
 			"b_set:       \n\t"					  // Начало основного цикла
 			"SLLI %[DATA], %[DATA], 1       \n\t" // Двигаем данные влево на один бит
@@ -312,13 +308,12 @@ public:
 			"S32I %[SET_L], %[PORT], 0     \n\t" // Устанавливаем на выходе LOW
 			"ADDI.N %[CNT], %[CNT], -1    \n\t"	 // Декремент счетчика циклов
 			"BNEZ %[CNT], l_start  \n\t"		 // Переход на новый цикл, если счетчик не иссяк
-			:
-			: [DATA] "r"(data),
-			  [PORT] "r"(_dat_port),
-			  [SET_H] "r"(_mask_h),
-			  [SET_L] "r"(_mask_l),
-			  [CNT] "r"(_cnt)
-			: "memory");
+			: [ CNT ] "=r"(_cnt)
+			: [ DATA ] "r"(data),
+			  [ PORT ] "r"(_dat_port),
+			  [ SET_H ] "r"(_mask_h),
+			  [ SET_L ] "r"(_mask_l)
+			:);
 
 		sei();
 	}
