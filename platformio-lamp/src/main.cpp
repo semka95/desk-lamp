@@ -6,7 +6,6 @@
 #include <SPIFFSEditor.h>
 
 #include <secrets.h>
-#include <led.h>
 #include <fastled.h>
 
 AsyncWebServer server(80);
