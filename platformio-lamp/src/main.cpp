@@ -6,7 +6,7 @@
 #include <SPIFFSEditor.h>
 
 #include <secrets.h>
-#include <fastled.h>
+#include <led.h>
 
 AsyncWebServer server(80);
 
@@ -30,8 +30,7 @@ void setup()
   Serial.begin(115200);
   Serial.setDebugOutput(true);
 
-  // setupLED();
-  setupFastLED();
+  setupLED();
 
   setupWiFi();
 
@@ -43,7 +42,7 @@ void setup()
 void loop()
 {
   MDNS.update();
-  loopFastLED(Serial);
+  loopLED();
 }
 
 void setupWiFi()

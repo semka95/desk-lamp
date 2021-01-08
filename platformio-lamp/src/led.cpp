@@ -1,73 +1,88 @@
-#include <fastled.h>
+#include <led.h>
+#define NUM_LEDS 60
+#define LED_PIN D2
+#define MAX_BR 150
+#define BR_STEP 15
+#include <Adafruit_NeoPixel.h>
+Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRBW + NEO_KHZ800);
+byte bn = 150;
 
-#define NUM_LEDS 30
 #define CLK D7
 #define DT D6
 #define SW D5
-#include "FastLED.h"
 #include "GyverEncoder.h"
 Encoder enc1(CLK, DT, SW);
-#define PIN D2
-CRGB leds[NUM_LEDS];
-byte bn = 150;
 
-void setupFastLED()
+void setupLED()
 {
-    FastLED.addLeds<WS2812B, PIN, GRB>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
-    FastLED.setBrightness(bn);
-    FastLED.setMaxPowerInVoltsAndMilliamps(5, 2000);
-    setColorTemperature(3500);
+    strip.begin();
+    strip.show();
+    strip.setBrightness(bn);
+    strip.fill(strip.Color(255, 0, 0, 0));
 
     enc1.setType(TYPE2);
 }
 
-void loopFastLED(HardwareSerial Serial)
+void loopLED()
 {
     enc1.tick();
 
     if (enc1.isRight())
     {
-        if (bn != 255)
+        if ((bn + BR_STEP) > MAX_BR)
         {
-            bn += 15;
-            FastLED.setBrightness(bn);
+            bn = MAX_BR;
         }
+        else
+        {
+            bn += BR_STEP;
+        }
+        strip.setBrightness(bn);
     }
     if (enc1.isLeft())
     {
-        if (bn != 0)
+        if ((int(bn) - BR_STEP) < 0)
         {
-            bn -= 15;
-            FastLED.setBrightness(bn);
+            bn = 0;
         }
+        else
+        {
+            bn -= BR_STEP;
+        }
+        strip.setBrightness(bn);
     }
 
-    FastLED.show();
+    strip.show();
 }
 
 void colorsRoutine(byte r, byte g, byte b)
 {
+    uint32_t color = strip.Color(r, g, b);
     for (int i = 0; i < NUM_LEDS; i++)
     {
-        leds[i] = CRGB(r, g, b);
+        strip.setPixelColor(i, color);
     }
 }
 
 void setBrightness(byte br)
 {
+    if (br > MAX_BR)
+    {
+        br = MAX_BR;
+    }
     bn = br;
-    FastLED.setBrightness(bn);
+    strip.setBrightness(bn);
 }
 
 void changeBrightness(int8_t br)
 {
     if ((bn + br) < 0)
         bn = 0;
-    else if ((bn + br) > 255)
-        bn = 255;
+    else if ((bn + br) > MAX_BR)
+        bn = MAX_BR;
     else
         bn += br;
-    FastLED.setBrightness(bn);
+    strip.setBrightness(bn);
 }
 
 // taken from Alexgyver/microLED
