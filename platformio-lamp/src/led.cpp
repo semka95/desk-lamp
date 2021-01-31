@@ -1,7 +1,7 @@
 #include <led.h>
 #define NUM_LEDS 60
-#define LED_PIN D2
-#define MAX_BR 150
+#define LED_PIN D4
+#define MAX_BR 255
 #define BR_STEP 15
 #include <Adafruit_NeoPixel.h>
 Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRBW + NEO_KHZ800);
@@ -18,7 +18,7 @@ void setupLED()
     strip.begin();
     strip.show();
     strip.setBrightness(bn);
-    strip.fill(strip.Color(255, 0, 0, 0));
+    strip.fill(strip.Color(0, 0, 0, 255));
 
     enc1.setType(TYPE2);
 }
@@ -55,9 +55,18 @@ void loopLED()
     strip.show();
 }
 
-void colorsRoutine(byte r, byte g, byte b)
+void RGBRoutine(byte r, byte g, byte b)
 {
-    uint32_t color = strip.Color(r, g, b);
+    uint32_t color = strip.Color(r, g, b, 0);
+    for (int i = 0; i < NUM_LEDS; i++)
+    {
+        strip.setPixelColor(i, color);
+    }
+}
+
+void whiteColourRoutine()
+{
+    uint32_t color = strip.Color(0, 0, 0, 255);
     for (int i = 0; i < NUM_LEDS; i++)
     {
         strip.setPixelColor(i, color);
@@ -136,5 +145,5 @@ void setColorTemperature(int kelvin)
         _b = tmpCalc;
     }
 
-    colorsRoutine(_r, _g, _b);
+    RGBRoutine(_r, _g, _b);
 }

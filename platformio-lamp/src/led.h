@@ -2,7 +2,8 @@
 
 void setupLED();
 void loopLED();
-void colorsRoutine(byte r, byte g, byte b);
+void RGBRoutine(byte r, byte g, byte b);
+void whiteColourRoutine();
 void setBrightness(byte bn);
 void changeBrightness(int8_t br);
 void setColorTemperature(int kelvin);

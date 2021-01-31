@@ -90,7 +90,15 @@ void handleStaticRGB(AsyncWebServerRequest *request)
   uint8_t g = request->getParam("g")->value().toInt();
   uint8_t b = request->getParam("b")->value().toInt();
 
-  colorsRoutine(r, g, b);
+  RGBRoutine(r, g, b);
+
+  request->send(200, contentType);
+  return;
+}
+
+void handleStaticWhite(AsyncWebServerRequest *request)
+{
+  whiteColourRoutine();
 
   request->send(200, contentType);
   return;
@@ -136,6 +144,7 @@ void setupServer()
   server.on("/api/brightness/up", HTTP_GET, handleBrUp);
   server.on("/api/brightness/down", HTTP_GET, handleBrDown);
   server.on("/api/rgb", HTTP_GET, handleStaticRGB);
+  server.on("/api/white", HTTP_GET, handleStaticWhite);
   server.on("/api/color_temp", HTTP_GET, handleColorTemp);
 
   server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.htm");
