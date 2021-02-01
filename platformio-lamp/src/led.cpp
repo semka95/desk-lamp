@@ -3,30 +3,29 @@
 #define LED_PIN D4
 #define MAX_BR 255
 #define BR_STEP 15
-#include <Adafruit_NeoPixel.h>
-Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
-byte bn = 150;
+#define LED_TYPE WS2812
+#define COLOR_ORDER GRB
+#include <FastLED.h>
+CRGB leds[NUM_LEDS];
+
+byte bn = 50;
 
 void setupLED()
 {
-    strip.begin();
-    strip.show();
-    strip.setBrightness(bn);
-    strip.fill(strip.Color(255, 0, 0));
+    FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
+    FastLED.setBrightness(bn);
+    FastLED.setMaxPowerInVoltsAndMilliamps(5, 1000);
 }
 
 void loopLED()
 {
-    strip.show();
+    FastLED.showColor(CRGB(255, 0, 0));
 }
 
 void RGBRoutine(byte r, byte g, byte b)
 {
-    uint32_t color = strip.Color(r, g, b, 0);
-    for (int i = 0; i < NUM_LEDS; i++)
-    {
-        strip.setPixelColor(i, color);
-    }
+    leds->setRGB(255, 0, 0);
+    FastLED.show();
 }
 
 void setBrightness(byte br)
@@ -40,7 +39,7 @@ void setBrightness(byte br)
         br = MAX_BR;
     }
     bn = br;
-    strip.setBrightness(bn);
+    FastLED.setBrightness(bn);
 }
 
 void changeBrightness(int8_t br)
@@ -51,7 +50,7 @@ void changeBrightness(int8_t br)
         bn = MAX_BR;
     else
         bn += br;
-    strip.setBrightness(bn);
+    FastLED.setBrightness(bn);
 }
 
 // taken from Alexgyver/microLED
