@@ -10,7 +10,7 @@
 
 AsyncWebServer server(80);
 
-const char *hostName = "lamp";
+const char *hostName = "monitor";
 const String contentType = "text/html; charset=UTF-8";
 
 void startMDNS();
@@ -96,14 +96,6 @@ void handleStaticRGB(AsyncWebServerRequest *request)
   return;
 }
 
-void handleStaticWhite(AsyncWebServerRequest *request)
-{
-  whiteColourRoutine();
-
-  request->send(200, contentType);
-  return;
-}
-
 void handleBrightness(AsyncWebServerRequest *request)
 {
   if (!request->hasParam("value"))
@@ -144,7 +136,6 @@ void setupServer()
   server.on("/api/brightness/up", HTTP_GET, handleBrUp);
   server.on("/api/brightness/down", HTTP_GET, handleBrDown);
   server.on("/api/rgb", HTTP_GET, handleStaticRGB);
-  server.on("/api/white", HTTP_GET, handleStaticWhite);
   server.on("/api/color_temp", HTTP_GET, handleColorTemp);
 
   server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.htm");

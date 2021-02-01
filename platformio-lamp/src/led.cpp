@@ -4,54 +4,19 @@
 #define MAX_BR 255
 #define BR_STEP 15
 #include <Adafruit_NeoPixel.h>
-Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRBW + NEO_KHZ800);
+Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 byte bn = 150;
-
-#define CLK D7
-#define DT D6
-#define SW D5
-#include "GyverEncoder.h"
-Encoder enc1(CLK, DT, SW);
 
 void setupLED()
 {
     strip.begin();
     strip.show();
     strip.setBrightness(bn);
-    strip.fill(strip.Color(0, 0, 0, 255));
-
-    enc1.setType(TYPE2);
+    strip.fill(strip.Color(255, 0, 0));
 }
 
 void loopLED()
 {
-    enc1.tick();
-
-    if (enc1.isRight())
-    {
-        if ((bn + BR_STEP) > MAX_BR)
-        {
-            bn = MAX_BR;
-        }
-        else
-        {
-            bn += BR_STEP;
-        }
-        strip.setBrightness(bn);
-    }
-    if (enc1.isLeft())
-    {
-        if ((int(bn) - BR_STEP) < 0)
-        {
-            bn = 0;
-        }
-        else
-        {
-            bn -= BR_STEP;
-        }
-        strip.setBrightness(bn);
-    }
-
     strip.show();
 }
 
@@ -64,17 +29,12 @@ void RGBRoutine(byte r, byte g, byte b)
     }
 }
 
-void whiteColourRoutine()
-{
-    uint32_t color = strip.Color(0, 0, 0, 255);
-    for (int i = 0; i < NUM_LEDS; i++)
-    {
-        strip.setPixelColor(i, color);
-    }
-}
-
 void setBrightness(byte br)
 {
+    if (br == 0)
+    {
+        br = 1;
+    }
     if (br > MAX_BR)
     {
         br = MAX_BR;
@@ -85,8 +45,8 @@ void setBrightness(byte br)
 
 void changeBrightness(int8_t br)
 {
-    if ((bn + br) < 0)
-        bn = 0;
+    if ((bn + br) <= 0)
+        bn = 1;
     else if ((bn + br) > MAX_BR)
         bn = MAX_BR;
     else
