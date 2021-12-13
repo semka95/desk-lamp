@@ -10,8 +10,8 @@ byte bn = 30;
 #define CLK D7
 #define DT D6
 #define SW D5
-#include "GyverEncoder.h"
-Encoder enc1(CLK, DT, SW);
+#include <EncButton.h>
+EncButton<EB_TICK, DT, CLK, SW> enc;
 
 void setupLED()
 {
@@ -19,21 +19,23 @@ void setupLED()
     strip.show();
     strip.setBrightness(bn);
     strip.fill(strip.Color(0, 0, 0, 255));
-
-    enc1.setType(TYPE2);
 }
 
 void loopLED()
 {
-    enc1.tick();
+    enc.tick();
 
-    if (enc1.isRight())
+    if (enc.right())
     {
         changeBrightness(BR_STEP);
     }
-    if (enc1.isLeft())
+    if (enc.left())
     {
         changeBrightness(-BR_STEP);
+    }
+    if (enc.press())
+    {
+        Serial.println("button pressed");
     }
 
     strip.show();
