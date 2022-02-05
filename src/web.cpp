@@ -1,10 +1,10 @@
-#include <web.h>
+#include "web.h"
 
 AsyncWebServer server(80);
 
 const String contentType = "text/html; charset=UTF-8";
 
-void setupServer()
+WebServer::WebServer()
 {
     SPIFFS.begin();
     server.addHandler(new SPIFFSEditor(HTTP_USERNAME, HTTP_PASSWORD));
@@ -13,6 +13,7 @@ void setupServer()
     server.on("/api/brightness/up", HTTP_GET, handleBrUp);
     server.on("/api/brightness/down", HTTP_GET, handleBrDown);
     server.on("/api/rgb", HTTP_GET, handleStaticRGB);
+    server.on("/api/hsv", HTTP_GET, handleStaticHSV);
     server.on("/api/white", HTTP_GET, handleStaticWhite);
     server.on("/api/color_temp", HTTP_GET, handleColorTemp);
 
@@ -23,9 +24,10 @@ void setupServer()
     server.onRequestBody(requestBodyHandler);
 
     server.begin();
+    Serial.printf("server started \n");
 }
 
-void handleStaticRGB(AsyncWebServerRequest *request)
+void WebServer::handleStaticRGB(AsyncWebServerRequest *request)
 {
     if (!request->hasParam("r") || !request->hasParam("g") || !request->hasParam("b"))
     {
@@ -37,21 +39,39 @@ void handleStaticRGB(AsyncWebServerRequest *request)
     uint8_t g = request->getParam("g")->value().toInt();
     uint8_t b = request->getParam("b")->value().toInt();
 
-    RGBRoutine(r, g, b);
+    _led->setRGBMode(r, g, b);
 
     request->send(200, contentType);
     return;
 }
 
-void handleStaticWhite(AsyncWebServerRequest *request)
+void WebServer::handleStaticHSV(AsyncWebServerRequest *request)
 {
-    whiteColourRoutine();
+    if (!request->hasParam("h") || !request->hasParam("s") || !request->hasParam("v"))
+    {
+        request->send(400, contentType);
+        return;
+    }
+
+    uint16_t h = request->getParam("h")->value().toInt();
+    uint8_t s = request->getParam("s")->value().toInt();
+    uint8_t v = request->getParam("v")->value().toInt();
+
+    _led->setHSVMode(h, s, v);
 
     request->send(200, contentType);
     return;
 }
 
-void handleBrightness(AsyncWebServerRequest *request)
+void WebServer::handleStaticWhite(AsyncWebServerRequest *request)
+{
+    _led->setWhiteMode();
+
+    request->send(200, contentType);
+    return;
+}
+
+void WebServer::handleBrightness(AsyncWebServerRequest *request)
 {
     if (!request->hasParam("value"))
     {
@@ -61,13 +81,13 @@ void handleBrightness(AsyncWebServerRequest *request)
 
     uint8_t bn = request->getParam("value")->value().toInt();
 
-    setBrightness(bn);
+    _led->setBrightness(bn);
 
     request->send(200, contentType);
     return;
 }
 
-void handleColorTemp(AsyncWebServerRequest *request)
+void WebServer::handleColorTemp(AsyncWebServerRequest *request)
 {
     if (!request->hasParam("value"))
     {
@@ -77,13 +97,14 @@ void handleColorTemp(AsyncWebServerRequest *request)
 
     int kelvin = request->getParam("value")->value().toInt();
 
-    setColorTemperature(kelvin);
+    Led::RGB rgb = _led->calcColTemp(kelvin);
+    _led->setColorTemperature(rgb.r, rgb.g, rgb.b);
 
     request->send(200, contentType);
     return;
 }
 
-void handleBrUp(AsyncWebServerRequest *request)
+void WebServer::handleBrUp(AsyncWebServerRequest *request)
 {
     uint8_t bn = 15;
     if (request->hasParam("value"))
@@ -91,11 +112,11 @@ void handleBrUp(AsyncWebServerRequest *request)
         bn = request->getParam("value")->value().toInt();
     }
 
-    changeBrightness(bn);
+    _led->changeBrightness(bn);
     request->send(200, contentType);
 }
 
-void handleBrDown(AsyncWebServerRequest *request)
+void WebServer::handleBrDown(AsyncWebServerRequest *request)
 {
     int8_t bn = 15;
     if (request->hasParam("value"))
@@ -103,11 +124,11 @@ void handleBrDown(AsyncWebServerRequest *request)
         bn = request->getParam("value")->value().toInt();
     }
 
-    changeBrightness(-bn);
+    _led->changeBrightness(-bn);
     request->send(200, contentType);
 }
 
-void requestBodyHandler(AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total)
+void WebServer::requestBodyHandler(AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total)
 {
     if (!index)
         Serial.printf("BodyStart: %u\n", total);
@@ -116,7 +137,7 @@ void requestBodyHandler(AsyncWebServerRequest *request, uint8_t *data, size_t le
         Serial.printf("BodyEnd: %u\n", total);
 }
 
-void fileUploadHandler(AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final)
+void WebServer::fileUploadHandler(AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final)
 {
     if (!index)
         Serial.printf("UploadStart: %s\n", filename.c_str());
@@ -125,12 +146,12 @@ void fileUploadHandler(AsyncWebServerRequest *request, const String &filename, s
         Serial.printf("UploadEnd: %s (%u)\n", filename.c_str(), index + len);
 }
 
-void heapHandler(AsyncWebServerRequest *request)
+void WebServer::heapHandler(AsyncWebServerRequest *request)
 {
     request->send(200, contentType, String(ESP.getFreeHeap()));
 }
 
-void nfHandler(AsyncWebServerRequest *request)
+void WebServer::nfHandler(AsyncWebServerRequest *request)
 {
     Serial.printf("NOT_FOUND: ");
     if (request->method() == HTTP_GET)

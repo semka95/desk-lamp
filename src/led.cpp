@@ -1,91 +1,132 @@
 #include <led.h>
-#define NUM_LEDS 60
-#define LED_PIN D4
-#define MAX_BR 255
-#define BR_STEP 15
-#include <Adafruit_NeoPixel.h>
-Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRBW + NEO_KHZ800);
-byte bn = 30;
 
-#define CLK D7
-#define DT D6
-#define SW D5
-#include <EncButton.h>
-EncButton<EB_TICK, DT, CLK, SW> enc;
+const byte Led::defBr = 30;
+const ledModes Led::defMode = ledModes::WHITE;
+const Led::RGB Led::defRGB = Led::RGB{255, 0, 0};
+const Led::HSV Led::defHSV = Led::HSV{13450, 100, 100};
+const Led::RGB Led::defColTemp = Led::RGB{100, 100, 100};
 
-void setupLED()
+void Led::setBrightness(byte br)
 {
-    strip.begin();
-    strip.show();
-    strip.setBrightness(bn);
-    strip.fill(strip.Color(0, 0, 0, 255));
+    if (br < _minBr)
+    {
+        br = _minBr;
+    }
+    if (br > _maxBr)
+    {
+        br = _maxBr;
+    }
+    _bn = br;
+    _strip.setBrightness(_bn);
+    _strip.show();
 }
 
-void loopLED()
+byte Led::getBrightness()
 {
-    enc.tick();
-
-    if (enc.right())
-    {
-        changeBrightness(BR_STEP);
-    }
-    if (enc.left())
-    {
-        changeBrightness(-BR_STEP);
-    }
-    if (enc.press())
-    {
-        Serial.println("button pressed");
-    }
-
-    strip.show();
+    return _bn;
 }
 
-void RGBRoutine(byte r, byte g, byte b)
+void Led::changeBrightness(int8_t br)
 {
-    uint32_t color = strip.Color(r, g, b, 0);
-    for (int i = 0; i < NUM_LEDS; i++)
-    {
-        strip.setPixelColor(i, color);
-    }
-}
-
-void whiteColourRoutine()
-{
-    uint32_t color = strip.Color(0, 0, 0, 255);
-    for (int i = 0; i < NUM_LEDS; i++)
-    {
-        strip.setPixelColor(i, color);
-    }
-}
-
-void setBrightness(byte br)
-{
-    if (br == 0)
-    {
-        br = 1;
-    }
-    if (br > MAX_BR)
-    {
-        br = MAX_BR;
-    }
-    bn = br;
-    strip.setBrightness(bn);
-}
-
-void changeBrightness(int8_t br)
-{
-    if ((bn + br) <= 0)
-        bn = 1;
-    else if ((bn + br) > MAX_BR)
-        bn = MAX_BR;
+    if ((_bn + br) < _minBr)
+        _bn = _minBr;
+    else if ((_bn + br) > _maxBr)
+        _bn = _maxBr;
     else
-        bn += br;
-    strip.setBrightness(bn);
+        _bn += br;
+    _strip.setBrightness(_bn);
+    _strip.show();
+}
+
+void Led::turnOff()
+{
+    _bn = 0;
+    _strip.setBrightness(_bn);
+    _strip.show();
+}
+
+void Led::setWhiteMode()
+{
+    Serial.print("setWhiteMod\n");
+    _minBr = 1;
+    _maxBr = MAX_BR;
+    _curMode = ledModes::WHITE;
+    uint32_t color = _strip.Color(0, 0, 0, 255);
+    for (int i = 0; i < NUM_LEDS; i++)
+    {
+        _strip.setPixelColor(i, color);
+    }
+    _strip.show();
+}
+
+void Led::setRGBMode(byte r, byte g, byte b)
+{
+    Serial.print("setRGBMod\n");
+    _minBr = 15;
+    _maxBr = MAX_BR;
+    _curMode = ledModes::RGB;
+    setBrightness(_bn);
+    _curRGB = RGB{r, g, b};
+    uint32_t color = _strip.Color(r, g, b, 0);
+    for (int i = 0; i < NUM_LEDS; i++)
+    {
+        _strip.setPixelColor(i, color);
+    }
+    _strip.show();
+}
+
+Led::RGB Led::getRGB()
+{
+    return _curRGB;
+}
+
+void Led::setHSVMode(uint16_t h, byte s, byte v)
+{
+    Serial.print("setHSVMod\n");
+    _minBr = 15;
+    _maxBr = MAX_BR;
+    _curMode = ledModes::HSV;
+    setBrightness(_bn);
+    _curHSV = HSV{h, s, v};
+    uint32_t color = _strip.ColorHSV(h, s, v);
+    for (int i = 0; i < NUM_LEDS; i++)
+    {
+        _strip.setPixelColor(i, color);
+    }
+    _strip.show();
+}
+
+Led::HSV Led::getHSV()
+{
+    return _curHSV;
+}
+
+ledModes Led::getCurMode()
+{
+    return _curMode;
+}
+
+void Led::setMode(ledModes mode)
+{
+    switch (mode)
+    {
+    case ledModes::WHITE:
+        setWhiteMode();
+        break;
+    case ledModes::RGB:
+        setRGBMode(_curRGB.r, _curRGB.g, _curRGB.b);
+        break;
+    case ledModes::HSV:
+        setHSVMode(_curHSV.h, _curHSV.s, _curHSV.v);
+        break;
+    case ledModes::COLTEMP:
+        setColorTemperature(_curColTemp.r, _curColTemp.g, _curColTemp.b);
+        break;
+    }
 }
 
 // taken from Alexgyver/microLED
-void setColorTemperature(int kelvin)
+Led::RGB Led::calcColTemp(int kelvin)
 {
     float tmpKelvin, tmpCalc;
     uint8_t _r, _g, _b;
@@ -135,5 +176,25 @@ void setColorTemperature(int kelvin)
         _b = tmpCalc;
     }
 
-    RGBRoutine(_r, _g, _b);
+    return Led::RGB{_r, _g, _b};
+}
+
+void Led::setColorTemperature(byte r, byte g, byte b)
+{
+    _minBr = 10;
+    _maxBr = 200;
+    _curMode = ledModes::COLTEMP;
+    setBrightness(_bn);
+    _curColTemp = RGB{r, g, b};
+    uint32_t color = _strip.Color(r, g, b, 255);
+    for (int i = 0; i < NUM_LEDS; i++)
+    {
+        _strip.setPixelColor(i, color);
+    }
+    _strip.show();
+}
+
+Led::RGB Led::getColTemp()
+{
+    return _curColTemp;
 }
