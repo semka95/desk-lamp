@@ -6,8 +6,12 @@ const String contentType = "text/html; charset=UTF-8";
 
 WebServer::WebServer()
 {
-    SPIFFS.begin();
-    server.addHandler(new SPIFFSEditor(HTTP_USERNAME, HTTP_PASSWORD));
+    if (!LittleFS.begin())
+    {
+        Serial.println("An Error has occurred while mounting LittleFS");
+        return;
+    }
+    server.addHandler(new SPIFFSEditor(HTTP_USERNAME, HTTP_PASSWORD, LittleFS));
     server.on("/heap", HTTP_GET, heapHandler);
     server.on("/api/brightness/set", HTTP_GET, handleBrightness);
     server.on("/api/brightness/up", HTTP_GET, handleBrUp);
@@ -17,7 +21,7 @@ WebServer::WebServer()
     server.on("/api/white", HTTP_GET, handleStaticWhite);
     server.on("/api/color_temp", HTTP_GET, handleColorTemp);
 
-    server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.htm");
+    server.serveStatic("/", LittleFS, "/").setDefaultFile("index.htm");
 
     server.onNotFound(nfHandler);
     server.onFileUpload(fileUploadHandler);

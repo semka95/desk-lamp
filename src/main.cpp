@@ -1,7 +1,10 @@
 #include <Arduino.h>
 
 #include <ESP8266WiFi.h>
-#include <ESP8266mDNS.h>
+#include <ArduinoOTA.h>
+#include "defines.h"
+ESPAsync_WiFiManager_Lite *ESPAsync_WiFiManager;
+
 const char *hostName = "lamp";
 
 #include "web.h"
@@ -19,13 +22,12 @@ const char *hostName = "lamp";
 #define DT D6
 #define SW D5
 #include <EncButton.h>
-EncButton<EB_TICK, DT, CLK, SW> enc;
+EncButton enc(DT, CLK, SW);
 bool ignorEnc = false;
 
 Led *led;
 Led *WebServer::_led;
 
-void startMDNS();
 void setupWiFi();
 
 void setup()
@@ -66,11 +68,14 @@ void setup()
   setupWiFi();
   WebServer::_led = led;
   WebServer srv;
+  ArduinoOTA.begin();
 }
 
 void loop()
 {
-  MDNS.update();
+  ArduinoOTA.handle();
+
+  ESPAsync_WiFiManager->run();
 
   enc.tick();
 
@@ -100,7 +105,6 @@ void loop()
     }
     else
     {
-
       EEPROM.put(BR_ADDR, bn);
       EEPROM.put(MODE_ADDR, mode);
       EEPROM.put(RGB_ADDR, rgb);
@@ -115,33 +119,31 @@ void loop()
 
 void setupWiFi()
 {
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  if (WiFi.waitForConnectResult() != WL_CONNECTED)
-  {
-    Serial.printf("STA: Failed!\n");
-    WiFi.disconnect(false);
-    delay(1000);
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  }
+  Serial.print(F("\nStarting ESPAsync_WiFi using "));
+  Serial.print(FS_Name);
+  Serial.print(F(" on "));
+  Serial.println(ARDUINO_BOARD);
+  Serial.println(ESP_ASYNC_WIFI_MANAGER_LITE_VERSION);
 
-  // MDNS init
-  startMDNS();
-  MDNS.addService("http", "tcp", 80);
-}
+#if USING_MRD
+  Serial.println(ESP_MULTI_RESET_DETECTOR_VERSION);
+#else
+  Serial.println(ESP_DOUBLE_RESET_DETECTOR_VERSION);
+#endif
 
-void startMDNS()
-{
-  if (!MDNS.begin(hostName))
-  {
-    Serial.println("[ERROR] MDNS responder did not setup");
-    while (1)
-    {
-      delay(1000);
-    }
-  }
-  else
-  {
-    Serial.println("[INFO] MDNS setup is successful!");
-  }
+  ESPAsync_WiFiManager = new ESPAsync_WiFiManager_Lite();
+  String AP_SSID = MY_AP_SSID;
+  String AP_PWD = MY_AP_PASSWORD;
+
+  // Set customized AP SSID and PWD
+  ESPAsync_WiFiManager->setConfigPortal(AP_SSID, AP_PWD);
+
+  // Optional to change default AP IP(192.168.4.1) and channel(10)
+  // ESPAsync_WiFiManager->setConfigPortalIP(IPAddress(192, 168, 120, 1));
+  ESPAsync_WiFiManager->setConfigPortalChannel(0);
+  // ESPAsync_WiFiManager->setSTAStaticIPConfig(IPAddress(192, 168, 1, 69),
+  //                                            IPAddress(192, 168, 1, 1),
+  //                                            IPAddress(255, 255, 255, 0));
+
+  ESPAsync_WiFiManager->begin();
 }

@@ -5,6 +5,7 @@
 
 #include <ESPAsyncWebServer.h>
 #include <ESPAsyncTCP.h>
+#include <LittleFS.h>
 #include <SPIFFSEditor.h>
 
 class WebServer
